@@ -10,33 +10,39 @@ class Content
 
     public $database;
     public $table;
+    public $singular_uc_table_name;
+    public $singular_table_name;
 
-    public function table($table)
+    public $api_content = "";
+    public $path;
+
+
+    public function __construct($database, $table)
     {
         $this->table = $table;
-        return $this;
-    }
-
-
-    public function database($database)
-    {
         $this->database = $database;
-        return $this;
+
+        $this->singular_uc_table_name = Inflect::singularize(ucfirst($this->table));
+        $this->singular_table_name = Inflect::singularize($this->table);
+
+
+        $this->path = getUsername() . "/" . $this->database . "/" . $this->singular_uc_table_name;
+
     }
+
 
     public function getRouteContent()
     {
 
-        $singular_uc_table_name = Inflect::singularize(ucfirst($this->table));
 
-     return   $api_content = '<?php
+        return $api_content = '<?php
  
 Route::group(["prefix" => "", "namespace" => "All\\' . getUsername() . '\\' . $this->database . '"], function () {
 
-    Route::get("{username}/{database_name}/' . $this->table . '/list", "' . $singular_uc_table_name . 'Controller@list");
-    Route::post("{username}/{database_name}/' . $this->table . '/create", "' . $singular_uc_table_name . 'Controller@create");
-    Route::post("{username}/{database_name}/' . $this->table . '/modify", "' . $singular_uc_table_name . 'Controller@modify");
-    Route::post("{username}/{database_name}/' . $this->table . '/delete", "' . $singular_uc_table_name . 'Controller@delete");
+    Route::get("{username}/{database_name}/' . $this->singular_table_name . '/list", "' . $this->singular_uc_table_name . 'Controller@list");
+    Route::post("{username}/{database_name}/' . $this->singular_table_name . '/create", "' . $this->singular_uc_table_name . 'Controller@create");
+    Route::post("{username}/{database_name}/' . $this->singular_table_name . '/modify", "' . $this->singular_uc_table_name . 'Controller@modify");
+    Route::post("{username}/{database_name}/' . $this->singular_table_name . '/delete", "' . $this->singular_uc_table_name . 'Controller@delete");
 
 
 });
@@ -44,46 +50,70 @@ Route::group(["prefix" => "", "namespace" => "All\\' . getUsername() . '\\' . $t
 
 ';
     }
-    public  function getModelContent($columns = [])
+
+
+    public function setRouteContent($routes, $make_file = false)
     {
-        $singular_uc_table_name = Inflect::singularize(ucfirst($this->table));
+
+        $this->api_content .= '<?php
+ 
+        Route::group(["prefix" => "", "namespace" => "All\\' . getUsername() . '\\' . $this->database . '"], function () {';
+
+        foreach ($routes as $route => $method) {
+            $this->api_content .= 'Route::' . $method . '("{username}/{database_name}/' . $this->singular_table_name . '/' . $route . '", "' . $this->singular_uc_table_name . 'Controller@' . $route . '");  ';
+            $this->api_content .= "\n";
+        }
+
+        $this->api_content .= "});";
+        if ($make_file) {
+            makeFile(base_path("routes/" . $this->path . ".php"), $this->api_content);
+        }
+        return $this->api_content;
+
+    }
+
+    public function setModelContent($columns = [], $make_file = false)
+    {
 
         $fillable = $this->getModelFillable($columns);
         $model_content = '<?php
         namespace App\Model\All\\' . getUsername() . "\\" . $this->database . ';
-        
         use Illuminate\Database\Eloquent\Model;
         
-        class ' . $singular_uc_table_name . ' extends Model
+        class ' . $this->singular_uc_table_name . ' extends Model
         {
         protected $connection="' . $this->database . '";
         protected $table="' . $this->table . '";
         
-            protected $fillable = [' . $fillable . '];
+            protected $fillable = [' . $fillable . ']; 
+            
+            } ';
+
+
+        if ($make_file) {
+
+            makeFile(app_path("Model/All/" . $this->path . ".php"), $model_content);
+
+
         }
-        ';
-
-
         return $model_content;
     }
 
-    public function getControllerContent($columns = [])
+    public function setControllerContent($columns = [], $make_file = false)
     {
 
-                $fillable = $this->getControllerFillable($columns);
+        $fillable = $this->getControllerFillable($columns);
 
-        $singular_uc_table_name = Inflect::singularize(ucfirst($this->table));
-
-     return   $controller_content = '<?php
+        $controller_content = '<?php
 
 namespace App\Http\Controllers\All\\' . getUsername() . "\\" . $this->database . ';
 
-use App\Model\All\\' . getUsername() . "\\" . $this->database . "\\" . Inflect::singularize(ucfirst($this->table)) . ';
+use App\Model\All\\' . getUsername() . "\\" . $this->database . "\\" . $this->singular_uc_table_name . ';
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Mockery\Exception;
 
-class ' . $singular_uc_table_name . 'Controller extends Controller
+class ' . $this->singular_uc_table_name . 'Controller extends Controller
 {
 
 
@@ -103,12 +133,12 @@ class ' . $singular_uc_table_name . 'Controller extends Controller
         $code = 200;
         $error = [];
         try {
-            $data = ' . $singular_uc_table_name . '::paginate(20);
+            $data = ' . $this->singular_uc_table_name . '::paginate(20);
         } catch (Exception $exception) {
             $code = 400;
             $error = $exception->getMessage();
         }
-        return app_response($code, "list of ' . $singular_uc_table_name . '", $data, $error);
+        return app_response($code, "list of ' . $this->singular_uc_table_name . '", $data, $error);
     }
 
     public function create(Request $request)
@@ -117,16 +147,16 @@ class ' . $singular_uc_table_name . 'Controller extends Controller
         $code = 200;
         $error = [];
         try {
-            $data = ' . $singular_uc_table_name . '::create(
+            $data = ' . $this->singular_uc_table_name . '::create(
                 [
-                    '.$fillable.'
+                    ' . $fillable . '
                 ]
             );
         } catch (Exception $exception) {
             $code = 400;
             $error = $exception->getMessage();
         }
-        return app_response($code, "create  ' . $singular_uc_table_name . ' success fully", $data, $error);
+        return app_response($code, "create  ' . $this->singular_uc_table_name . ' success fully", $data, $error);
     }
 
     public function modify(Request $request)
@@ -135,9 +165,9 @@ class ' . $singular_uc_table_name . 'Controller extends Controller
         $code = 200;
         $error = [];
         try {
-            $data = ' . $singular_uc_table_name . '::where("id", $request->id)->update(
+            $data = ' . $this->singular_uc_table_name . '::where("id", $request->id)->update(
                 [
-                         '.$fillable.'
+                         ' . $fillable . '
 
                 ]
             );
@@ -145,7 +175,7 @@ class ' . $singular_uc_table_name . 'Controller extends Controller
             $code = 400;
             $error = $exception->getMessage();
         }
-        return app_response($code, "modify  ' . $singular_uc_table_name . ' success fully", $data, $error);
+        return app_response($code, "modify  ' . $this->singular_uc_table_name . ' success fully", $data, $error);
     }
 
     public function delete(Request $request)
@@ -154,15 +184,23 @@ class ' . $singular_uc_table_name . 'Controller extends Controller
         $code = 200;
         $error = [];
         try {
-            $data = ' . $singular_uc_table_name . '::where("id", $request->id)->delete();
+            $data = ' . $this->singular_uc_table_name . '::where("id", $request->id)->delete();
         } catch (Exception $exception) {
             $code = 400;
             $error = $exception->getMessage();
         }
-        return app_response($code, "modify  ' . $singular_uc_table_name . ' success fully", $data, $error);
+        return app_response($code, "modify  ' . $this->singular_uc_table_name . ' success fully", $data, $error);
     }
 }
 ';
+
+
+        if ($make_file) {
+            makeFile(app_path("Http/Controllers/All/" . $this->path . "Controller.php"), $controller_content);
+
+        }
+
+        return $controller_content;
     }
 
     private function getModelFillable($columns)
@@ -183,7 +221,7 @@ class ' . $singular_uc_table_name . 'Controller extends Controller
 
         $fillable = '"';
         for ($i = 0; $i < sizeof($columns); $i++) {
-            $x = (sizeof($columns) == $i + 1) ? '"=> $request->'.$columns[$i].'' : '"=> $request->'.$columns[$i].',"';
+            $x = (sizeof($columns) == $i + 1) ? '"=> $request->' . $columns[$i] . '' : '"=> $request->' . $columns[$i] . ',"';
 
             $fillable .= $columns[$i] . $x;
 

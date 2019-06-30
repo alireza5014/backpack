@@ -106,6 +106,8 @@
                                                         name="column_type[]"
                                                         required>
                                                     <option value="int">Int</option>
+                                                    <option value="varchar">Varchar</option>
+                                                    <option value="text">Text</option>
                                                 </select>
                                                 <label> نوع ستون </label>
                                                 <i class="form-group__bar"></i>
@@ -197,7 +199,11 @@
                     '                                                <select   type="text" class="form-control "\n' +
                     '                                                        name="column_type[]"\n' +
                     '                                                        required>\n' +
+                 
                     '                                                    <option value="int">Int</option>\n' +
+                    '                                                    <option value="varchar">varchar</option>\n' +
+                    '                                                    <option value="text">Text</option>\n' +
+                    '                                                    <option value="timestamp">timestamp</option>\n' +
                     '                                                </select>\n' +
                     '                                                <label> نوع ستون </label>\n' +
                     '                                                <i class="form-group__bar"></i>\n' +

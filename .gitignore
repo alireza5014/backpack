@@ -1,7 +1,10 @@
 /node_modules
 /public/hot
 /public/storage
+<<<<<<< HEAD
+=======
 /public/images
+>>>>>>> 569c24237690ea19ad086d61ab01e55867e26496
 /storage/*.key
 /vendor
 /.idea

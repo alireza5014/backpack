@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\classes\Content;
 use App\classes\Inflect;
+use App\Model\Url;
 use Illuminate\Console\Command;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,7 @@ class TableCreateCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'mysql:create_table {name?} {charset?} {collation?} {database_id?} {database_name?} {create_model=false} {columns_name?} {columns_type?} {columns_length?}';
+    protected $signature = 'mysql:create_table {name?} {table_id?} {charset?} {collation?} {database_id?} {database_name?} {create_model=false} {columns_name?} {columns_type?} {columns_length?}';
 
     /**
      * The console command description.
@@ -45,6 +46,7 @@ class TableCreateCommand extends Command
 
 
         $tableName = $this->argument('name') ?: config("database.connections.mysql.database");
+        $tableId = $this->argument('table_id') ?: 0;
         $charset = $this->argument('charset') ?: config("database.connections.mysql.charset", 'utf8mb4');
         $collation = $this->argument('collation') ?: config("database.connections.mysql.collation", 'utf8mb4_unicode_ci');
         $database_id = $this->argument('database_id');
@@ -56,22 +58,31 @@ class TableCreateCommand extends Command
         $create_model = $this->argument('create_model');
 
 
-        Schema::connection(getConnection($database_id))->create($tableName, function (Blueprint $table) use ($charset, $collation, $engine, $columns_name,$columns_type,$columns_length) {
+        Schema::connection(getConnection($database_id))->create($tableName, function (Blueprint $table) use ($charset, $collation, $engine, $columns_name, $columns_type, $columns_length) {
+            $table->increments('id');
 
             for ($i = 0; $i < sizeof($columns_name); $i++) {
-                switch ($columns_type[$i]) {
+                 switch ($columns_type[$i]) {
+
+
                     case 'int':
-                        $table->integer($columns_name[$i]);
-
-
+                        if ($columns_name[$i] != 'id')
+                            $table->integer($columns_name[$i]);
                         break;
 
+
                     case 'varchar':
-                        $table->string($columns_name[$i],$columns_length[$i]);
+                        $table->string($columns_name[$i], $columns_length[$i])->nullable();
                         break;
 
                     case 'text':
-                        $table->text($columns_name[$i]);
+                        $table->text($columns_name[$i])->nullable();
+                        break;
+
+                    case 'timestamp':
+
+                        $table->timestamp($columns_name[$i], 0)->nullable();
+
                         break;
                 }
 
@@ -85,19 +96,29 @@ class TableCreateCommand extends Command
         });
 
 
-        $path = getUsername() . "/" . $database_name . "/" . Inflect::singularize(ucfirst($tableName));
+        $content = new Content($database_name, $tableName);
+        $model_content = $content->setModelContent($columns_name, true);
+        $controller_content = $content->setControllerContent($columns_name, true);
 
-        $content = new Content();
-        $model_content = $content->database($database_name)->table($tableName)->getModelContent($columns_name);
-        $controller_content = $content->database($database_name)->table($tableName)->getControllerContent($columns_name);
 
-        $api_content = $content->database($database_name)->table($tableName)->getRouteContent();
+        $routes = ['list' => 'GET', 'create' => 'POST', 'modify' => 'POST', 'delete' => 'POST'];
+        $api_content = $content->setRouteContent($routes, true);
 
-        makeFile(base_path("routes/" . getUsername() . "/" . $database_name . "/" . $tableName . ".php"), $api_content);
 
-        makeFile(app_path("Model/All/" . $path . ".php"), $model_content);
-        makeFile(app_path("Http/Controllers/All/" . $path . "Controller.php"), $controller_content);
+        $table_name = Inflect::singularize($tableName);
+        $routes = ['list' => 'GET', 'create' => 'POST', 'modify' => 'POST', 'delete' => 'POST'];
+        foreach ($routes as $route => $method) {
+            Url::create(
+                [
+                    'database_id' => $database_id,
+                    'table_id' => $tableId,
+                    'title' => $table_name . " " . $route,
 
+                    'link' => "api/" . getUsername() . "/" . $database_name . "/" . $table_name . "/" . $route,
+                    'method' => $method,
+                ]
+            );
+        }
 
     }
 }

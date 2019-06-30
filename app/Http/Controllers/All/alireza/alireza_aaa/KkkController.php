@@ -43,8 +43,7 @@ class KkkController extends Controller
         try {
             $data = Kkk::create(
                 [
-                    "title" => $request->title,
-                    "user_id" => $request->user_id,
+                    "tt"=> $request->tt,"kkh"=> $request->kkh
                 ]
             );
         } catch (Exception $exception) {
@@ -62,8 +61,8 @@ class KkkController extends Controller
         try {
             $data = Kkk::where("id", $request->id)->update(
                 [
-                    "title" => $request->title,
-                    "user_id" => $request->user_id,
+                         "tt"=> $request->tt,"kkh"=> $request->kkh
+
                 ]
             );
         } catch (Exception $exception) {

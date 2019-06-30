@@ -19,7 +19,7 @@ class DatabaseController extends Controller
     {
 
 
-         //  return DB::select('describe users');
+        //  return DB::select('describe users');
 
         $data = Database::where('user_id', getUserId())->paginate(20);
 
@@ -30,7 +30,7 @@ class DatabaseController extends Controller
     public function create(Request $request, Table $table)
     {
         try {
-            $db_name = auth('user')->user()->username . "_" . $request->name;
+            $db_name = getUsername() . "_" . $request->name;
             $db = Database::create(
                 [
                     'user_id' => getUserId(),
@@ -39,25 +39,40 @@ class DatabaseController extends Controller
                     'charset' => $request->charset,
                     'description' => $request->description,]);
 
-            $table->name = 'users';
-            $table->collation = $request->collection;
-            $table->type = 'InnoDB';
-            $db->tables()->save($table);
+            $table = Table::create([
+                'database_id' => $db->id,
+                'name' => "users",
+                'type' => 'InnoDB',
+                'collation' => $request->collection,
+            ]);
 
 
-            Artisan::call('mysql:create_db', ['name' => $db_name, 'charset' => $request->charset, 'collation' => $request->collection]);
+            if ($table) {
+                Artisan::call('mysql:create_db',
+                    [
+                        'name' => $db_name,
+                        'charset' => $request->charset,
+                        'collation' => $request->collection
+                    ]
+                );
+                Artisan::call('mysql:create_table',
+                    [
+                        'name' => 'users',
+                        'table_id' => $table->id,
+                        'charset' => $request->charset,
+                        'collation' => $request->collection,
+                        'database_id' => $db->id,
+                        'database_name' => $db->name,
+                        'create_model' => true,
 
-            Schema::connection(getConnection($db->id))->create('users', function (Blueprint $table) {
-                $table->increments('id');
-                $table->string('fname');
-                $table->string('lname');
-                $table->string('email')->unique();
-                $table->string('password');
-                $table->string('address');
-                $table->timestamps();
+                        'columns_name' => [ 'fname', 'lname', 'email', 'mobile', 'password', 'address','created_at','updated_at'],
+                        'columns_type' => [ 'varchar', 'varchar', 'varchar', 'varchar', 'varchar', 'varchar', 'timestamp', 'timestamp'],
+                        'columns_length' => [50, 50, 50, 12, 100, 500,50,50],
+                    ]);
 
 
-            });
+            }
+
 
         } catch (Exception $exception) {
             return makeException($exception, __FILE__, __FUNCTION__, __LINE__);

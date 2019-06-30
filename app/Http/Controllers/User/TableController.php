@@ -74,6 +74,8 @@ class TableController extends Controller
 
     public function new()
     {
+
+
         $database_id = Input::get('database_id', 0);
         $database_name = Input::get('database_name', 0);
 
@@ -97,71 +99,25 @@ class TableController extends Controller
             'collation' => $request->collation,
         ]);
 
-        $table_id = $table->id;
-        $table_name = Inflect::singularize($request->name);
 
-        Artisan::call('mysql:create_table',
-            ['name' => $request->name,
-                'charset' => $request->charset,
-                'collation' => $request->collection,
-                'database_id' => $request->database_id,
-                'database_name' => $request->database_name,
-                'create_model' => true,
-                'columns_name' =>$request->column_name,
-                'columns_type' =>$request->column_type,
-                'columns_length' =>$request->column_length,
-            ]);
-        Url::create(
-            [
-                'database_id' => $request->database_id,
-                'table_id' => $table_id,
-                'title' => $request->name . " LIST",
+        if ($table) {
+            Artisan::call('mysql:create_table',
+                [
+                    'name' => $request->name,
+                    'table_id' => $table->id,
+                    'charset' => $request->charset,
+                    'collation' => $request->collection,
+                    'database_id' => $request->database_id,
+                    'database_name' => $request->database_name,
+                    'create_model' => true,
+                    'columns_name' => $request->column_name,
+                    'columns_type' => $request->column_type,
+                    'columns_length' => $request->column_length,
+                ]);
 
-                'link' => "api/" . auth('user')->user()->username . "/" . $request->database_name . "/" . $table_name . "/list",
-                'method' => "GET",
-            ]
-        );
-        Url::create(
 
-            [
-                'database_id' => $request->database_id,
 
-                'table_id' => $table_id,
-                'title' => $request->name . " CREATE",
-
-                'link' => "api/" . auth('user')->user()->username . "/" . $request->database_name . "/" . $table_name . "/create",
-
-                'method' => "POST",
-
-            ]
-        );
-        Url::create(
-            [
-                'database_id' => $request->database_id,
-
-                'table_id' => $table_id,
-                'title' => $request->name . " MODIFY",
-
-                'link' => "api/" . auth('user')->user()->username . "/" . $request->database_name . "/" . $table_name . "/modify",
-
-                'method' => "POST",
-
-            ]
-        );
-        Url::create(
-            [
-                'database_id' => $request->database_id,
-
-                'table_id' => $table_id,
-                'title' => $request->name . " DELETE",
-
-                'link' => "api/" . auth('user')->user()->username . "/" . $request->database_name . "/" . $table_name . "/delete",
-
-                'method' => "POST",
-
-            ]
-
-        );
+        }
 
 
         return back()->with('success', "جدول " . $request->name . " با موفقیت ثبت شد");
